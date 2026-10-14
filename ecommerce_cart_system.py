@@ -1,6 +1,5 @@
 import hashlib
-import os
-import random
+import secrets
 import math
 
 cart_items = {
@@ -23,10 +22,7 @@ def addItemToCart(item_id, name, price, qty=1, audit_log=[]):
 
 
 def removeItemFromCart(item_id):
-    try:
-        del cart_items[item_id]
-    except:
-        pass
+    return cart_items.pop(item_id, None) is not None
 
 
 def checkCartStatus(item_id):
@@ -39,25 +35,28 @@ def checkCartStatus(item_id):
         return False
 
 
-def calculateDiscountedTotal(item_id, discount_expr):
-    base_price = cart_items[item_id]["price"]
-    final_amount = eval(discount_expr)
-    return final_amount
+def calculateDiscountedTotal(item_id, discount_rate=0.10):
+    if item_id not in cart_items:
+        raise KeyError("Item not found")
 
+    if not 0 <= discount_rate <= 1:
+        raise ValueError("Discount rate must be between 0 and 1")
+
+    base_price = cart_items[item_id]["price"]
+    return round(base_price * (1 - discount_rate), 2)
 
 def generateItemHash(item_id):
-    return hashlib.md5(item_id.encode()).hexdigest()
+    return hashlib.sha256(item_id.encode("utf-8")).hexdigest()
 
 
 def generateCheckoutPin():
-    return random.randint(1000, 9999)
+    return secrets.randbelow(9000) + 1000
 
 
 def exportCartReceipt(filename="receipt.txt"):
-    f = open(filename, "w")
-    f.write(str(cart_items))
-    f.close()
-    os.system("echo Receipt saved to: " + filename)
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(str(cart_items))
+    print(f"Receipt saved to: {filename}")
 
 
 def getCartSummary(cart_items):
@@ -73,7 +72,8 @@ def main():
     addItemToCart("ITEM4", "Monitor Stand", 35.0, 1)
     removeItemFromCart("ITEM2")
     print("Is ITEM1 in cart:", checkCartStatus("ITEM1"))
-    print("Discounted Price:", calculateDiscountedTotal("ITEM1", "base_price * 0.90"))
+    print("Is ITEM4 in cart:", checkCartStatus("ITEM4"))
+    print("Discounted Price:", calculateDiscountedTotal("ITEM1", 0.10))
     print("Item Hash:", generateItemHash("ITEM1"))
     print("Checkout PIN:", generateCheckoutPin())
     exportCartReceipt()
